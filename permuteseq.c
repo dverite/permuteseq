@@ -209,14 +209,13 @@ cycle_walking_cipher(int64 minval, int64 maxval, int64 value, uint64 crypt_key, 
 	int i;
 	uint64 result;		/* offset into the interval */
 
-	/* Compute the block size: it's the smallest even power of 2
-	   greater than or equal to the interval size. The half-blocks
-	   have equal lengths. */
-	hsz = 2;
-	while (hsz < 64 && (1<<hsz) < interval)
-		hsz += 2;
+	/* Compute the half block size: it's the smallest power of 2 such as two
+	   blocks are greater than or equal to the size of interval in bits. The
+	   half-blocks have equal lengths. */
+	hsz = 1;
+	while (hsz < 32 && ((uint64)1<<(2*hsz)) < interval)
+		hsz++;
 
-	hsz = hsz / 2;
 	mask = (1 << hsz) - 1;
 
 	/* Scramble the key. This is not strictly necessary, but will
@@ -249,7 +248,7 @@ cycle_walking_cipher(int64 minval, int64 maxval, int64 value, uint64 crypt_key, 
 			l1 = l2;
 			r1 = r2;
 		}
-		result = (r1 << hsz) | l1;
+		result = ((uint64)r1 << hsz) | l1;
 		/* swap one more time to prepare for the next cycle */
 		l1 = r2;
 		r1 = l2;
