@@ -4,7 +4,7 @@
 It's a C PostgreSQL extension to manage scalable pseudo-random permutations of sequences.
 
 ## Usage
-Inside psql:
+Example in psql:
 ```
 =# CREATE EXTENSION permuteseq;
 
@@ -34,17 +34,17 @@ Inside psql:
 -----------------
           -10000
 
-=> SELECT range_encrypt_element(1234, 0, 20000, :secret_key);
+=> SELECT range_encrypt_element(91919191919, 1e10::bigint, 1e11::bigint, :secret_key);
 
  range_encrypt_element 
 -----------------------
-                  5951
+           89116043319
 
-=> select range_decrypt_element(5951, 0, 20000, :secret_key);
+=> select range_decrypt_element(89116043319, 1e10::bigint, 1e11::bigint, :secret_key);
 
  range_decrypt_element 
 -----------------------
-                  1234
+           91919191919
 
 ```
 
