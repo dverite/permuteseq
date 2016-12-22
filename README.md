@@ -103,14 +103,15 @@ A: It's essentially a [format-preserving encryption](https://en.wikipedia.org/wi
 A: No. Altough it's based on well-known and proven techniques, the limits at play (64-bit key, reduced output space) are too small for that. Also, it's generally safe to assume that code not reviewed by professional cryptographers is not cryptographically strong.  Consider [XTEA](https://en.wikipedia.org/wiki/XTEA), available for PostgreSQL through the [cryptint](http://pgxn.org/dist/cryptint) extension, if you simply want a strong 64-bit to 64-bit Feistel cipher.
 
 *Q: How is the unicity of the output guaranteed?*  
-A: By the mathematical property that is at the heart of the [Feistel Network](https://en.wikipedia.org/wiki/Feistel_cipher).
+A: By the mathematical property that is at the heart of the [Feistel Network](https://en.wikipedia.org/wiki/Feistel_cipher), which produces a permutation in the mathematical sense (f(x)=f(y) <=> x=y).
 
 *Q: Are the output sequences deterministic or truly random?*  
 A: The permutations are fully deterministic. The random-looking effect is due to encryption, not to a PRNG. The same range with the same encryption key will always produce the same output sequence.
 
-*Q: What happens when the same number is permuted within a different range and the same key?*  
-A: It might produce totally a different result, due to the cipher
-block size being dynamic and a function of the input range. Precisely, results will
-diverge when the closest powers of two to which each range round
-up (in size) are different. The dynamic nature of the block size is essential to
-reduce the cycle-walking steps.
+*Q: What happens when the same input is permuted within a different range and the same key?*  
+A: It might produce a totally different result, due to the cipher
+block size being dynamic. The block size in bits is computed as the
+smallest even number of bits that can represent the input range.
+For example, the range [-1000,1000] contains 2001 values, just below
+2^11=2048, but since 11 is uneven, the block is rounded up to 12 bits wide.
+Choosing a block comparable in size to the input range is essential to reduce the number of cycle-walking iterations.
