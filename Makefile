@@ -9,10 +9,6 @@ OBJS      = permuteseq.o
 
 all:
 
-#all: sql/$(EXTENSION)--$(EXTVERSION).sql 
-
-#$(EXTENSION)--$(EXTVERSION).sql: sql/$(EXTENSION).sql
-#	cp $< $@
 
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
