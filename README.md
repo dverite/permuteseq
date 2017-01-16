@@ -5,48 +5,48 @@ It's a C PostgreSQL extension to manage scalable pseudo-random permutations of s
 
 ## Usage
 Example in psql:
-```
-=# CREATE EXTENSION permuteseq;
 
-=> CREATE SEQUENCE s MINVALUE -10000 MAXVALUE 15000;
+	=# CREATE EXTENSION permuteseq;
 
-=> \set secret_key 123456789012345
+	=> CREATE SEQUENCE s MINVALUE -10000 MAXVALUE 15000;
 
-=> SELECT  permute_nextval('s'::regclass, :secret_key) FROM generate_series(-10000,-7000);
+	=> \set secret_key 123456789012345
 
- permute_nextval 
------------------
-            5676
-           11547
-           -6199
-           14901
-            8937
-[... skip 2991 unique values in the range [-10000,15000], in a random-looking order ... ]
-           -6071
-           -7855
-           -9299
-             255
-             944
+	=> SELECT permute_nextval('s'::regclass, :secret_key) FROM generate_series(-10000,-7000);
 
-=> SELECT reverse_permute('s'::regclass, 5676, :secret_key);
+	 permute_nextval
+	-----------------
+		    -545
+		   -8279
+		    4160
+		   10528
+		     581
+	[... skip 2991 unique values within the range [-10000,15000], in a random-looking order ... ]
+		    8901
+		    9558
+		   11359
+		    9728
+		     365
 
- reverse_permute 
------------------
-          -10000
+	=> SELECT reverse_permute('s'::regclass, -545, :secret_key);
 
-=> SELECT range_encrypt_element(91919191919, 1e10::bigint, 1e11::bigint, :secret_key);
+	 reverse_permute
+	-----------------
+		  -10000
 
- range_encrypt_element 
------------------------
-           89116043319
+	=> SELECT range_encrypt_element(91919191919, 1e10::bigint, 1e11::bigint, :secret_key);
 
-=> select range_decrypt_element(89116043319, 1e10::bigint, 1e11::bigint, :secret_key);
+	 range_encrypt_element
+	-----------------------
+		   83028080992
 
- range_decrypt_element 
------------------------
-           91919191919
+	=> SELECT range_decrypt_element(83028080992, 1e10::bigint, 1e11::bigint, :secret_key);
 
-```
+	 range_decrypt_element
+	-----------------------
+		   91919191919
+
+
 
 ## Functions
 
@@ -65,10 +65,9 @@ Decrypt a value previously encrypted with `range_encrypt_element()`.
 ## Installation
 The Makefile uses the [PGXS infrastructure](https://www.postgresql.org/docs/current/static/extend-pgxs.html) to find include and library files, and determine the install location.  
 Build and install with:
-```
-$ make
-$ (sudo) make install
-```
+
+	$ make
+	$ (sudo) make install
 
 
 ## Some explanations in Q & A form
@@ -100,7 +99,7 @@ A: By using a different 64-bit secret key for each sequence you want to keep sec
 A: It's essentially a [format-preserving encryption](https://en.wikipedia.org/wiki/Format-preserving_encryption) scheme.  In an inner loop, there's a balanced 9-round [Feistel Cipher](https://en.wikipedia.org/wiki/Feistel_cipher), with a block size determined by the range of the sequence. The round function hashes the current block with bits from the key. A cycle-walking outer loop iterates over that encryption step until the result fits into the desired range, so the outputs are guaranteed to be in the same exact range as the inputs. The reverse permutation follows the same process iterating in the reverse order.
 
 *Q: Is the shuffle effect comparable to crypto-grade randomizing?*  
-A: No. Altough it's based on well-known and proven techniques, the limits at play (64-bit key, reduced output space) are too small for that. Also, it's generally safe to assume that code not reviewed by professional cryptographers is not cryptographically strong.  Consider [XTEA](https://en.wikipedia.org/wiki/XTEA), available for PostgreSQL through the [cryptint](http://pgxn.org/dist/cryptint) extension, if you simply want a strong 64-bit to 64-bit Feistel cipher.
+A: No. Altough it's based on well-known and proven techniques, the limits at play (64-bit key, reduced output space) are too small for that. Also, it's generally safe to assume that code not reviewed by professional cryptographers is not cryptographically strong. If you simply want a strong 64-bit to 64-bit Feistel cipher, you may consider [XTEA](https://en.wikipedia.org/wiki/XTEA), available for PostgreSQL through the [cryptint](http://pgxn.org/dist/cryptint) extension.
 
 *Q: How is the unicity of the output guaranteed?*  
 A: By the mathematical property that is at the heart of the [Feistel Network](https://en.wikipedia.org/wiki/Feistel_cipher), which produces a permutation in the mathematical sense (f(x)=f(y) <=> x=y).
@@ -114,4 +113,4 @@ block size being dynamic. The block size in bits is computed as the
 smallest even number of bits that can represent the input range.
 For example, the range [-1000,1000] contains 2001 values, just below
 2^11=2048, but since 11 is uneven, the block is rounded up to 12 bits wide.
-Choosing a block comparable in size to the input range is essential to reduce the number of cycle-walking iterations.
+The fact that the algorithm chooses a block comparable in size to the input range is essential to reduce the number of cycle-walking iterations.
