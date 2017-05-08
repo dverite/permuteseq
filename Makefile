@@ -1,9 +1,10 @@
 EXTENSION  = permuteseq
-EXTVERSION = 1.1.0
+EXTVERSION = 1.2.0
 
 PG_CONFIG = pg_config
 
-DATA = sql/$(EXTENSION)--$(EXTVERSION).sql
+DATA = $(wildcard sql/*.sql)
+
 MODULE_big = permuteseq
 OBJS      = permuteseq.o
 

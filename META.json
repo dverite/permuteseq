@@ -1,7 +1,7 @@
 {
     "name": "permuteseq",
     "abstract": "Extension to manage scalable pseudo-random permutations of sequences",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "maintainer": "Daniel Vérité <daniel@manitou-mail.org>",
     "license": "postgresql",
 
@@ -14,8 +14,8 @@
     },
     "provides": {
         "permuteseq": {
-            "file": "sql/permuteseq--1.1.0.sql",
-            "version": "1.1.0",
+            "file": "sql/permuteseq--1.2.0.sql",
+            "version": "1.2.0",
             "abstract": "Extension to manage scalable pseudo-random permutations of sequences"
         }
     },
