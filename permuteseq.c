@@ -3,18 +3,27 @@
  *
  * PostgreSQL extension to manage scalable pseudo-random permutations of sequences. 
  *
- * By Daniel Vérité, 2016. See LICENSE.md
+ * By Daniel Vérité, 2016-2017. See LICENSE.md
  */
 
 #include <inttypes.h>
 
 #include "postgres.h"
-#include "fmgr.h"
+#include "access/hash.h"
+#include "c.h"
 #include "commands/sequence.h"
 #include "executor/executor.h"
-#include "access/hash.h"
+#include "fmgr.h"
 
 PG_MODULE_MAGIC;
+
+/* Define PG_INT64_{MIN,MAX} for older versions of PG includes that lack them */
+#ifndef PG_INT64_MIN
+#define PG_INT64_MIN	(-INT64CONST(0x7FFFFFFFFFFFFFFF) - 1)
+#endif
+#ifndef PG_INT64_MAX
+#define PG_INT64_MAX	INT64CONST(0x7FFFFFFFFFFFFFFF)
+#endif
 
 Datum permute_nextval(PG_FUNCTION_ARGS);
 Datum reverse_permute(PG_FUNCTION_ARGS);
@@ -25,6 +34,22 @@ static int64 cycle_walking_cipher(int64 minval, int64 maxval,
 				  int64 value, uint64 key,
 				  int direction);
 
+/*
+ * Compute the difference between the min and max of the sequence,
+ * avoiding an integer overflow.
+ * Returns true if at least 4 elements fit in the sequence.
+ */
+static bool check_sequence_range(int64 minv, int64 maxv)
+{
+	/* first check the cases when maxv-minv would overflow an int64 */
+	if ((minv > 0 && maxv < PG_INT64_MIN + minv) ||
+	    (minv < 0 && maxv > PG_INT64_MAX + minv))
+	{
+		return true;
+	}
+	else
+		return (maxv - minv >= 4-1);
+}
 
 PG_FUNCTION_INFO_V1(permute_nextval);
 
@@ -51,11 +76,12 @@ permute_nextval(PG_FUNCTION_ARGS)
 	minval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 2, &isnull));
 	maxval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 3, &isnull));
 
-	if (maxval - minval < 4)
+	/* Make sure that the sequence is large enough */
+	if (!check_sequence_range(minval, maxval))
 	{
 		ereport(ERROR, (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 				errmsg("sequence too short to encrypt."),
-				errhint("The difference between minimum and maximum values should be at least 4.")));
+				errhint("The difference between minimum and maximum values should be at least 3.")));
 	}
 
 	nextval = DatumGetInt64(DirectFunctionCall1(nextval_oid, seq_oid));
