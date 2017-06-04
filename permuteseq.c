@@ -14,6 +14,9 @@
 #include "commands/sequence.h"
 #include "executor/executor.h"
 #include "fmgr.h"
+#if PG_VERSION_NUM >= 100000
+#include "utils/fmgrprotos.h"
+#endif
 
 PG_MODULE_MAGIC;
 
@@ -24,6 +27,7 @@ PG_MODULE_MAGIC;
 #ifndef PG_INT64_MAX
 #define PG_INT64_MAX	INT64CONST(0x7FFFFFFFFFFFFFFF)
 #endif
+
 
 Datum permute_nextval(PG_FUNCTION_ARGS);
 Datum reverse_permute(PG_FUNCTION_ARGS);
