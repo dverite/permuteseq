@@ -1,7 +1,12 @@
 ## permuteseq
 
 
-It's a C PostgreSQL extension to manage scalable pseudo-random permutations of sequences.
+A C PostgreSQL extension to manage scalable pseudo-random permutations of sequences.
+
+It allows to generate unique, non-sequential, random-looking series of numbers without looking up previous values.  
+The general idea is to encrypt sequence positions with a Feistel cipher and cycle-walking.  
+The series of numbers are made unique with a secret key and reproducible
+with the same key.
 
 ## Usage
 Example in psql:
