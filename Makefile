@@ -1,5 +1,5 @@
 EXTENSION  = permuteseq
-EXTVERSION = 1.2
+EXTVERSION = 1.2.2
 
 PG_CONFIG = pg_config
 

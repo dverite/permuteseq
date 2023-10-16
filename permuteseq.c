@@ -3,7 +3,7 @@
  *
  * PostgreSQL extension to manage scalable pseudo-random permutations of sequences. 
  *
- * By Daniel Vérité, 2016-2017. See LICENSE.md
+ * By Daniel Vérité, 2016-2023. See LICENSE.md
  */
 
 #include <inttypes.h>
