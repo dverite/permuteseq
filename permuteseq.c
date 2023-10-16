@@ -11,8 +11,13 @@
 #include "postgres.h"
 #include "access/hash.h"
 #include "c.h"
+#include "catalog/pg_sequence.h"
 #include "commands/sequence.h"
 #include "executor/executor.h"
+#include "miscadmin.h"
+#include "utils/acl.h"
+#include "utils/lsyscache.h"
+#include "utils/syscache.h"
 #include "fmgr.h"
 #if PG_VERSION_NUM >= 100000
 #include "utils/fmgrprotos.h"
@@ -55,7 +60,47 @@ static bool check_sequence_range(int64 minv, int64 maxv)
 		return (maxv - minv >= 4-1);
 }
 
+
+static void
+get_sequence_min_max(Oid seq_oid, int64 *minval, int64 *maxval)
+{
+#if PG_VERSION_NUM < 160000
+	bool isnull;
+	/* Obtain the min,max from the pg_catalog.pg_sequence tuple.
+	   isnull will always be false, no need to test it. */
+	Datum params = DirectFunctionCall1(pg_sequence_parameters, seq_oid);
+	*minval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 2, &isnull));
+	*maxval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 3, &isnull));
+#else
+	/* Starting with PG 16, the implementation of
+	 * pg_sequence_parameters() uses get_call_result_type(), which makes
+	 * it not callable with DirectFunctionCall1.
+	 * So instead we get the fields from the sequence data with
+	 * lower-level code.
+	 */
+	HeapTuple	pgstuple;
+	Form_pg_sequence pgsform;
+
+	if (pg_class_aclcheck(seq_oid, GetUserId(), ACL_SELECT | ACL_UPDATE | ACL_USAGE) != ACLCHECK_OK)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied for sequence %s",
+						get_rel_name(seq_oid))));
+
+	pgstuple = SearchSysCache1(SEQRELID, seq_oid);
+	if (!HeapTupleIsValid(pgstuple))
+		elog(ERROR, "cache lookup failed for sequence %u", seq_oid);
+	pgsform = (Form_pg_sequence) GETSTRUCT(pgstuple);
+
+	*minval = pgsform->seqmin;
+	*maxval = pgsform->seqmax;
+
+	ReleaseSysCache(pgstuple);
+#endif
+}
+
 PG_FUNCTION_INFO_V1(permute_nextval);
+
 
 /*
  * Input: a sequence (through its OID) and a 64-bit encryption key.
@@ -71,14 +116,8 @@ permute_nextval(PG_FUNCTION_ARGS)
 	Datum seq_oid = PG_GETARG_DATUM(0);
 	uint64 crypt_key = PG_GETARG_INT64(1);
 	int64 minval, maxval, result, nextval;
-	Datum params;
-	bool isnull;
 
-	/* Obtain the minimum and maximum values of the sequence.
-	   isnull will always be false, no need to test it. */
-	params = DirectFunctionCall1(pg_sequence_parameters, seq_oid);
-	minval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 2, &isnull));
-	maxval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 3, &isnull));
+	get_sequence_min_max(seq_oid, &minval, &maxval);
 
 	/* Make sure that the sequence is large enough */
 	if (!check_sequence_range(minval, maxval))
@@ -121,14 +160,8 @@ reverse_permute(PG_FUNCTION_ARGS)
 	int64 value = PG_GETARG_INT64(1);
 	uint64 crypt_key = PG_GETARG_INT64(2);
 	int64 minval, maxval, result;
-	Datum params;
-	bool isnull;
 
-	/* Obtain the minimum and maximum values of the sequence.
-	   isnull will always be false, no need to test it. */
-	params = DirectFunctionCall1(pg_sequence_parameters, seq_oid);
-	minval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 2, &isnull));
-	maxval = DatumGetInt64(GetAttributeByNum((HeapTupleHeader)params, 3, &isnull));
+	get_sequence_min_max(seq_oid, &minval, &maxval);
 
 	if (maxval - minval < 4)
 	{
