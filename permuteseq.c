@@ -10,6 +10,9 @@
 
 #include "postgres.h"
 #include "access/hash.h"
+#if PG_VERSION_NUM >= 160000
+#include "access/htup_details.h"
+#endif
 #include "c.h"
 #include "catalog/pg_sequence.h"
 #include "commands/sequence.h"
